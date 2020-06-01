@@ -7,35 +7,28 @@ var DATE_COL = 2;
 var ss = SpreadsheetApp.getActiveSpreadsheet();
 
 // Main function that creates and deletes sheets if necessary
-function onOpen(e) {
-  var sheets = ss.getSheets();
+function sheetRoutine() {
   var currentDateStr = Utilities.formatDate(new Date(), "GMT-5", "yyyy-MM-dd" );
   var currentDate = new Date();
+  var tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate()+1);
+  var tomorrowDateStr = Utilities.formatDate(tomorrowDate, "GMT-5", "yyyy-MM-dd" );
 
-  //deleteIrrelevantSheets(sheets);
-  deleteFutureSheets(sheets, currentDate);
 
-  ss.toast("Création des nouvelles feuilles, ça ne sera pas très long ...", "Bonjour!", 7);
+  ss.toast("Création des nouvelles feuilles, ça ne sera pas très long ... Ne rien toucher avant le retrait de ce message. Merci!", "Attention!", 10);
   
-  sheets = ss.getSheets();
+  deleteIrrelevantSheets(ss.getSheets());
+  deleteFutureSheets(ss.getSheets(), currentDate);
 
   // Creates a sheet if there is no current date sheet
-  if (!checkIfSheetExists(sheets, currentDateStr)) {
-    createSheet(sheets, currentDateStr);
+  if (!checkIfSheetExists(ss.getSheets(), currentDateStr)) {
+    createSheet(ss.getSheets(), currentDateStr);
   }
-
-  // Creates a sheet if there is no sheet for tomorrow (not before RESERVATION_WINDOW_START)
-  if (currentDate.getHours() >= RESERVATION_WINDOW_START) {
-    var tomorrowDate = new Date();
-    tomorrowDate.setDate(tomorrowDate.getDate()+1);
-    var tomorrowDateStr = Utilities.formatDate(tomorrowDate, "GMT-5", "yyyy-MM-dd" );
-    if (!checkIfSheetExists(sheets, tomorrowDateStr)) {
-      createSheet(sheets, tomorrowDateStr);
-    }
-  }
+    
+  createSheet(ss.getSheets(), tomorrowDateStr);
 
   // Removes old sheets
-  deleteOldSheets(sheets, currentDate);
+  deleteOldSheets(ss.getSheets(), currentDate);
 }
 
 // Deletes sheets that are older than the current date
@@ -52,10 +45,11 @@ function deleteOldSheets(sheets, currentDate) {
 
 // Deletes sheets that are irrelevant (added by other users)
 function deleteIrrelevantSheets(sheets) {
-  let dateRegEx = new RegExp('^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$');
+  let dateRegEx = /^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$/;
   sheets.forEach(sheet => {
     var sheetDateStr = sheet.getSheetName();
-    if (!dateRegEx.test(sheetDateStr)) {
+    var regexTest = sheetDateStr.match(dateRegEx);
+    if (sheetDateStr.match(dateRegEx) == null) {
       ss.deleteSheet(sheet);
     }
   });
@@ -63,13 +57,12 @@ function deleteIrrelevantSheets(sheets) {
 
 
 function deleteFutureSheets(sheets, currentDate) {
-  var inWindow = new Date().getHours() < RESERVATION_WINDOW_START ? false : true;
-  var acceptableDelay = (inWindow ? 0 : 0)*60*60*1000;
   sheets.forEach(sheet => {
     var sheetDateStr = sheet.getSheetName();
-    var sheetDate = new Date(sheetDateStr);
-  var delay = sheetDate - currentDate;
-    if (sheetDate - currentDate > acceptableDelay) {
+    var sheetDateHNE = new Date(sheetDateStr);
+    var sheetDate = new Date(sheetDateHNE.getTime() + Math.abs(sheetDateHNE.getTimezoneOffset()*60000));
+    var delay = sheetDate - currentDate;
+    if (sheetDate > currentDate) {
       ss.deleteSheet(sheet);
     }
   });
