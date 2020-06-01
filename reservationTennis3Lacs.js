@@ -1,6 +1,6 @@
 // Global vars
-var TIME_TO_DELETION = 72*60*60*1000;
-var RESERVATION_WINDOW_START = 18;
+var TIME_TO_DELETION = 72*60*60*1000; // Three days
+var RESERVATION_WINDOW_START = 18; // 6:00 p.m.
 var RESERVATION_RANGE = "B3:D45";
 var DATE_ROW = 1;
 var DATE_COL = 2;
@@ -12,6 +12,13 @@ function onOpen(e) {
   var currentDateStr = Utilities.formatDate(new Date(), "GMT-5", "yyyy-MM-dd" );
   var currentDate = new Date();
 
+  //deleteIrrelevantSheets(sheets);
+  deleteFutureSheets(sheets, currentDate);
+
+  ss.toast("Création des nouvelles feuilles, ça ne sera pas très long ...", "Bonjour!", 7);
+  
+  sheets = ss.getSheets();
+
   // Creates a sheet if there is no current date sheet
   if (!checkIfSheetExists(sheets, currentDateStr)) {
     createSheet(sheets, currentDateStr);
@@ -20,7 +27,7 @@ function onOpen(e) {
   // Creates a sheet if there is no sheet for tomorrow (not before RESERVATION_WINDOW_START)
   if (currentDate.getHours() >= RESERVATION_WINDOW_START) {
     var tomorrowDate = new Date();
-    tomorrowDate = tomorrowDate.setDate(tomorrowDate.getDate()+1);
+    tomorrowDate.setDate(tomorrowDate.getDate()+1);
     var tomorrowDateStr = Utilities.formatDate(tomorrowDate, "GMT-5", "yyyy-MM-dd" );
     if (!checkIfSheetExists(sheets, tomorrowDateStr)) {
       createSheet(sheets, tomorrowDateStr);
@@ -43,6 +50,32 @@ function deleteOldSheets(sheets, currentDate) {
   });
 }
 
+// Deletes sheets that are irrelevant (added by other users)
+function deleteIrrelevantSheets(sheets) {
+  let dateRegEx = new RegExp('^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|[12][0-9]|3[01])$');
+  sheets.forEach(sheet => {
+    var sheetDateStr = sheet.getSheetName();
+    if (!dateRegEx.test(sheetDateStr)) {
+      ss.deleteSheet(sheet);
+    }
+  });
+}
+
+
+function deleteFutureSheets(sheets, currentDate) {
+  var inWindow = new Date().getHours() < RESERVATION_WINDOW_START ? false : true;
+  var acceptableDelay = (inWindow ? 0 : 0)*60*60*1000;
+  sheets.forEach(sheet => {
+    var sheetDateStr = sheet.getSheetName();
+    var sheetDate = new Date(sheetDateStr);
+  var delay = sheetDate - currentDate;
+    if (sheetDate - currentDate > acceptableDelay) {
+      ss.deleteSheet(sheet);
+    }
+  });
+}
+
+
 function createSheet(sheets, currentDateStr) {
   // Create a sheet for the current date
   var oldSheet = sheets[0];
@@ -56,6 +89,9 @@ function createSheet(sheets, currentDateStr) {
   dateCell.setValue(currentDateStr);
 
   copyPermissions(oldSheet, newSheet);
+  
+  ss.setActiveSheet(newSheet);
+  ss.moveActiveSheet(1);
 }
 
 // Returns true if a sheet matches the date

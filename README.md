@@ -1,2 +1,3 @@
-# reservationTennis3Lacs
-reservationTennis3Lacs
+# ReservationTennis3Lacs
+
+This script manages reservation sheets for a tennis club.
